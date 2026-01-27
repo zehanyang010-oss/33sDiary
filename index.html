@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Sketchbook Diary</title>
+  <style>
+    :root{
+      --paper:#fbf6ea;
+      --paper2:#f6eedc;
+      --ink:#1f1f1f;
+      --muted:#6b6b6b;
+      --accent:#b3122d; /* red-ish */
+      --shadow: 0 18px 45px rgba(0,0,0,.22);
+      --radius: 18px;
+      --pagePadding: 22px;
+      --font: ui-serif, Georgia, "Times New Roman", serif;
+      --ui: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    body{
+      margin:0;
+      background: radial-gradient(1200px 700px at 50% 30%, #ffffff 0%, #f3f4f6 55%, #e8ebf2 100%);
+      color:var(--ink);
+      font-family: var(--ui);
+    }
+
+    header{
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255,255,255,.88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0,0,0,.08);
+    }
+
+    .bar{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 12px 16px;
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .title{
+      display:flex; gap:10px; align-items:baseline;
+    }
+    .title h1{
+      font-size: 16px; margin:0; font-weight: 700;
+    }
+    .title span{
+      font-size: 12px; color: var(--muted);
+    }
+
+    .controls{
+      display:flex; gap:8px; flex-wrap: wrap; align-items:center;
+    }
+
+    button, .fileLabel{
+      font-family: var(--ui);
+      font-size: 13px;
+      border: 1px solid rgba(0,0,0,.12);
+      background: white;
+      padding: 8px 10px;
+      border-radius: 999px;
+      cursor:pointer;
+      transition: transform .05s ease, background .15s ease;
+      user-select:none;
+    }
+    button:active{ transform: translateY(1px); }
+    button.primary{
+      background: var(--accent);
+      border-color: rgba(0,0,0,.08);
+      color: white;
+    }
+    button.ghost{
+      background: transparent;
+    }
+    button.danger{
+      background: #fff5f5;
+      border-color: rgba(179,18,45,.25);
+      color: #8a0e23;
+    }
+    .fileLabel{ display:inline-flex; gap:8px; align-items:center; }
+    input[type="file"]{ display:none; }
+
+    main{
+      max-width: 1100px;
+      margin: 26px auto 50px;
+      padding: 0 16px;
+    }
+
+    .hint{
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0 0 14px;
+      line-height: 1.4;
+    }
+
+    /* Book shell */
+    .bookWrap{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap: 14px;
+      flex-direction: column;
+    }
+
+    .book{
+      width: min(980px, 100%);
+      aspect-ratio: 16 / 9;
+      position: relative;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      background: linear-gradient(90deg, #3b2c2a 0%, #4a3532 50%, #3b2c2a 100%);
+      padding: 16px;
+    }
+
+    .spread{
+      position:absolute;
+      inset: 16px;
+      border-radius: calc(var(--radius) - 6px);
+      background: linear-gradient(90deg, var(--paper2), var(--paper));
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      overflow:hidden;
+    }
+
+    .spine{
+      position:absolute;
+      top: 0; bottom: 0;
+      left: 50%;
+      width: 28px;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, rgba(0,0,0,.12), rgba(255,255,255,.18), rgba(0,0,0,.12));
+      pointer-events:none;
+      opacity:.55;
+    }
+
+    .page{
+      position: relative;
+      padding: var(--pagePadding);
+      font-family: var(--font);
+      line-height: 1.5;
+      background:
+        radial-gradient(900px 320px at 50% 0%, rgba(0,0,0,.05), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.55), transparent 65%),
+        repeating-linear-gradient(180deg, rgba(0,0,0,.03) 0px, rgba(0,0,0,.03) 1px, transparent 24px, transparent 25px);
+    }
+
+    .page.left{
+      border-right: 1px solid rgba(0,0,0,.08);
+    }
+
+    .pageHeader{
+      display:flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-family: var(--ui);
+    }
+    .pageHeader .label{
+      font-weight: 700;
+      font-size: 12px;
+      color: rgba(0,0,0,.55);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .pageHeader .pageno{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .content{
+      height: calc(100% - 28px);
+      overflow:auto;
+      padding-right: 6px;
+    }
+
+    /* Editable content */
+    .editable[contenteditable="true"]{
+      outline: none;
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,.55);
+      border: 1px dashed rgba(0,0,0,.18);
+      min-height: 220px;
+    }
+
+    .editable img{
+      max-width: 100%;
+      border-radius: 12px;
+      display:block;
+      margin: 10px auto;
+      box-shadow: 0 10px 18px rgba(0,0,0,.12);
+    }
+
+    .toolbar{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      flex-wrap: wrap;
+      margin: 10px 0 0;
+      justify-content:center;
+    }
+    .toolbar .nav{
+      display:flex; gap:8px; align-items:center;
+    }
+    .status{
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--ui);
+    }
+
+    /* Small screens */
+    @media (max-width: 820px){
+      .book{ aspect-ratio: 3 / 4; }
+      .spread{ grid-template-columns: 1fr; }
+      .spine{ display:none; }
+      .page.left{ border-right:none; border-bottom: 1px solid rgba(0,0,0,.08); }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="title">
+      <h1>Sketchbook Diary</h1>
+      <span id="modeBadge">View mode</span>
+    </div>
+    <div class="controls">
+      <button id="toggleModeBtn" class="primary">Enter Edit Mode</button>
+
+      <button id="addPageBtn" title="Add a new page">Add Page</button>
+      <button id="deletePageBtn" class="danger" title="Delete current spread">Delete Spread</button>
+
+      <label class="fileLabel" title="Insert image into the current page">
+        Insert Image
+        <input id="imgInput" type="file" accept="image/*"/>
+      </label>
+
+      <button id="exportBtn" class="ghost" title="Export diary as JSON">Export JSON</button>
+      <label class="fileLabel" title="Import diary JSON (replaces current)">
+        Import JSON
+        <input id="importInput" type="file" accept="application/json"/>
+      </label>
+
+      <button id="resetBtn" class="ghost" title="Reset to demo diary">Reset</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <p class="hint">
+    This page is a “book-style diary” you can edit and then present to your audience.
+    In Edit Mode, click into the page to type. Use “Insert Image” to add drawings. Export/Import lets you move the diary between devices.
+  </p>
+
+  <div class="bookWrap">
+    <div class="book" role="region" aria-label="Diary book">
+      <div class="spread" aria-live="polite">
+        <div class="page left">
+          <div class="pageHeader">
+            <div class="label">Left Page</div>
+            <div class="pageno" id="leftNo">—</div>
+          </div>
+          <div class="content">
+            <div id="leftContent" class="editable"></div>
+          </div>
+        </div>
+
+        <div class="page right">
+          <div class="pageHeader">
+            <div class="label">Right Page</div>
+            <div class="pageno" id="rightNo">—</div>
+          </div>
+          <div class="content">
+            <div id="rightContent" class="editable"></div>
+          </div>
+        </div>
+
+        <div class="spine"></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="nav">
+        <button id="prevBtn" aria-label="Previous pages">Prev</button>
+        <button id="nextBtn" aria-label="Next pages">Next</button>
+      </div>
+      <div class="status" id="statusText">Saved.</div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // --------- Data model ---------
+  // Pages are stored as HTML strings. We show them in spreads: [index] and [index+1].
+  const STORAGE_KEY = "sketchbookDiary_v1";
+
+  const demoDiary = {
+    title: "Sketchbook Diary",
+    pages: [
+      `<h2 style="margin-top:0;">Sketchbook Diary</h2>
+       <p><em>A fictional young fan’s drawings and thoughts.</em></p>
+       <p>Use Edit Mode to write diary entries, then switch back to View Mode for your audience.</p>
+       <p><strong>Tip:</strong> Insert a watercolour image and add a short caption under it.</p>`,
+      `<h3 style="margin-top:0;">Entry #01</h3>
+       <p>Today felt like a race between a lightning bolt and a sleepy animal.</p>
+       <p>I drew it so I wouldn’t forget.</p>`,
+      `<h3 style="margin-top:0;">Entry #02</h3>
+       <p>In the living room, the TV was loud, but the room was quiet.</p>
+       <p>Somehow the calm moments were the loudest.</p>`,
+      `<h3 style="margin-top:0;">Entry #03</h3>
+       <p>At school, everyone argued like they were engineers.</p>
+       <p>I just wanted one clean sentence to explain the feeling.</p>`,
+    ]
+  };
+
+  let state = loadState() || structuredClone(demoDiary);
+  let isEditMode = false;
+
+  // spreadIndex points to the left page index (0,2,4,...)
+  let spreadIndex = 0;
+
+  // --------- Elements ---------
+  const leftContent = document.getElementById("leftContent");
+  const rightContent = document.getElementById("rightContent");
+  const leftNo = document.getElementById("leftNo");
+  const rightNo = document.getElementById("rightNo");
+
+  const modeBadge = document.getElementById("modeBadge");
+  const toggleModeBtn = document.getElementById("toggleModeBtn");
+  const addPageBtn = document.getElementById("addPageBtn");
+  const deletePageBtn = document.getElementById("deletePageBtn");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const imgInput = document.getElementById("imgInput");
+  const exportBtn = document.getElementById("exportBtn");
+  const importInput = document.getElementById("importInput");
+  const resetBtn = document.getElementById("resetBtn");
+  const statusText = document.getElementById("statusText");
+
+  // --------- Render ---------
+  function render() {
+    const total = state.pages.length;
+
+    // Ensure there is always an even number of pages for clean spreads
+    if (total % 2 !== 0) state.pages.push("<p></p>");
+
+    const leftIdx = spreadIndex;
+    const rightIdx = spreadIndex + 1;
+
+    leftContent.innerHTML = state.pages[leftIdx] ?? "<p></p>";
+    rightContent.innerHTML = state.pages[rightIdx] ?? "<p></p>";
+
+    leftNo.textContent = `Page ${leftIdx + 1} / ${state.pages.length}`;
+    rightNo.textContent = `Page ${rightIdx + 1} / ${state.pages.length}`;
+
+    setEditable(isEditMode);
+
+    prevBtn.disabled = (spreadIndex <= 0);
+    nextBtn.disabled = (spreadIndex + 2 >= state.pages.length);
+
+    modeBadge.textContent = isEditMode ? "Edit mode" : "View mode";
+    toggleModeBtn.textContent = isEditMode ? "Exit Edit Mode" : "Enter Edit Mode";
+    toggleModeBtn.classList.toggle("primary", !isEditMode);
+  }
+
+  function setEditable(editable) {
+    leftContent.setAttribute("contenteditable", editable ? "true" : "false");
+    rightContent.setAttribute("contenteditable", editable ? "true" : "false");
+
+    leftContent.classList.toggle("editable", true);
+    rightContent.classList.toggle("editable", true);
+
+    leftContent.style.cursor = editable ? "text" : "default";
+    rightContent.style.cursor = editable ? "text" : "default";
+  }
+
+  // --------- Save ---------
+  let saveTimer = null;
+  function scheduleSave() {
+    statusText.textContent = "Saving…";
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      persistCurrentSpread();
+      saveState();
+      statusText.textContent = "Saved.";
+    }, 300);
+  }
+
+  function persistCurrentSpread() {
+    const leftIdx = spreadIndex;
+    const rightIdx = spreadIndex + 1;
+    state.pages[leftIdx] = leftContent.innerHTML;
+    state.pages[rightIdx] = rightContent.innerHTML;
+  }
+
+  function saveState() {
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(e){
+      statusText.textContent = "Could not save (storage full).";
+    }
+  }
+
+  function loadState() {
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  // --------- Events ---------
+  toggleModeBtn.addEventListener("click", () => {
+    isEditMode = !isEditMode;
+    // persist before switching
+    persistCurrentSpread();
+    saveState();
+    render();
+  });
+
+  prevBtn.addEventListener("click", () => {
+    persistCurrentSpread();
+    spreadIndex = Math.max(0, spreadIndex - 2);
+    render();
+    saveState();
+  });
+
+  nextBtn.addEventListener("click", () => {
+    persistCurrentSpread();
+    spreadIndex = Math.min(state.pages.length - 2, spreadIndex + 2);
+    render();
+    saveState();
+  });
+
+  addPageBtn.addEventListener("click", () => {
+    persistCurrentSpread();
+    // add two pages (one spread)
+    state.pages.push("<h3 style='margin-top:0;'>New Entry</h3><p></p>");
+    state.pages.push("<p></p>");
+    // jump to last spread
+    spreadIndex = state.pages.length - 2;
+    render();
+    saveState();
+  });
+
+  deletePageBtn.addEventListener("click", () => {
+    if (state.pages.length <= 2) return;
+    persistCurrentSpread();
+    // remove current spread (2 pages)
+    state.pages.splice(spreadIndex, 2);
+    spreadIndex = Math.min(spreadIndex, state.pages.length - 2);
+    spreadIndex = Math.max(0, spreadIndex - (spreadIndex % 2));
+    render();
+    saveState();
+  });
+
+  // autosave when typing in edit mode
+  [leftContent, rightContent].forEach(el => {
+    el.addEventListener("input", () => {
+      if (!isEditMode) return;
+      scheduleSave();
+    });
+  });
+
+  // Image insertion (insert into focused page; fallback to left)
+  let lastFocused = leftContent;
+  leftContent.addEventListener("focus", () => lastFocused = leftContent);
+  rightContent.addEventListener("focus", () => lastFocused = rightContent);
+  leftContent.addEventListener("click", () => lastFocused = leftContent);
+  rightContent.addEventListener("click", () => lastFocused = rightContent);
+
+  imgInput.addEventListener("change", async (e) => {
+    if (!isEditMode) {
+      alert("Enter Edit Mode to insert images.");
+      imgInput.value = "";
+      return;
+    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const dataUrl = await fileToDataUrl(file);
+    // Insert image at caret inside the focused contenteditable
+    insertImageAtCaret(lastFocused, dataUrl);
+    scheduleSave();
+    imgInput.value = "";
+  });
+
+  function fileToDataUrl(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function insertImageAtCaret(container, src){
+    container.focus();
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = "Inserted image";
+
+    const p = document.createElement("p");
+    p.appendChild(img);
+
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0){
+      const range = sel.getRangeAt(0);
+      range.collapse(false);
+      range.insertNode(p);
+      // move cursor after the image
+      range.setStartAfter(p);
+      range.setEndAfter(p);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      container.appendChild(p);
+    }
+  }
+
+  exportBtn.addEventListener("click", () => {
+    persistCurrentSpread();
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sketchbook-diary.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  importInput.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    try{
+      const imported = JSON.parse(text);
+      if (!imported.pages || !Array.isArray(imported.pages)) throw new Error("Invalid diary JSON");
+      state = imported;
+      spreadIndex = 0;
+      saveState();
+      render();
+    }catch(err){
+      alert("Import failed: " + err.message);
+    }
+    importInput.value = "";
+  });
+
+  resetBtn.addEventListener("click", () => {
+    if (!confirm("Reset diary to demo content? This will overwrite your saved diary.")) return;
+    state = structuredClone(demoDiary);
+    spreadIndex = 0;
+    isEditMode = false;
+    saveState();
+    render();
+  });
+
+  // --------- Boot ---------
+  render();
+</script>
+</body>
+</html>
