@@ -1009,17 +1009,33 @@
   }
 
   async function initializeState(){
-    try{
-      db = await openDB();
-      const saved = await loadStateFromDB();
-      state = saved && Array.isArray(saved.pages) ? saved : structuredClone(demoDiary);
-    }catch(e){
-      console.error("IndexedDB unavailable, fallback to demo diary.", e);
+  try{
+    db = await openDB();
+
+    const published = await loadPublishedDiary();
+    const saved = await loadStateFromDB();
+
+    if (saved && Array.isArray(saved.pages)) {
+      state = saved;
+    } else if (published && Array.isArray(published.pages)) {
+      state = published;
+      await saveStateToDB(state);
+    } else {
       state = structuredClone(demoDiary);
-      setStatus("Storage limited in this browser.", "warn");
     }
-    render();
+  }catch(e){
+    console.error("IndexedDB unavailable, fallback to published/demo diary.", e);
+
+    const published = await loadPublishedDiary();
+    state = published && Array.isArray(published.pages)
+      ? published
+      : structuredClone(demoDiary);
+
+    setStatus("Storage limited in this browser.", "warn");
   }
+
+  render();
+}
 
   function clearOverlays(){
     turnRight.classList.remove("active","turnNext","turnPrev");
